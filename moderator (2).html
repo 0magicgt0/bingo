@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MaloyCSer BINGO — Модератор</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Nunito:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#06091a;--surface:#0e1228;--surface2:#141830;
+  --border:rgba(70,140,255,0.1);--accent:#4fa8ff;
+  --gold:#f5c842;--text:#c8e0ff;--muted:#4a6080;--green:#4ade80;
+  --red:#f04f4f;
+}
+body{background:var(--bg);color:var(--text);font-family:"Nunito",sans-serif;height:100vh;min-height:100vh;padding:10px 12px;overflow:hidden}
+body::before{content:"";position:fixed;inset:0;background:radial-gradient(ellipse 700px 400px at 10% 20%,rgba(30,80,255,0.06) 0%,transparent 70%),radial-gradient(ellipse 500px 350px at 90% 80%,rgba(79,168,255,0.04) 0%,transparent 70%);pointer-events:none;z-index:0}
+.wrap{max-width:980px;margin:0 auto;position:relative;z-index:1;height:calc(100vh - 20px);display:grid;grid-template-rows:auto auto auto auto auto minmax(0,1fr) auto auto;gap:6px;overflow:hidden}
+.board-wrap{display:grid;grid-template-columns:minmax(0,1fr);gap:10px;align-items:stretch;min-height:0;overflow:hidden}
+.board-wrap.edit-layout{grid-template-columns:minmax(0,560px) minmax(240px,280px);justify-content:center}
+.header{text-align:center;margin-bottom:0}
+.badge{display:inline-block;background:rgba(79,168,255,0.12);border:1px solid rgba(79,168,255,0.3);color:var(--accent);font-size:11px;letter-spacing:3px;padding:4px 14px;border-radius:4px;margin-bottom:8px;font-weight:700}
+h1{font-family:"Bebas Neue",sans-serif;font-size:clamp(24px,4.8vw,40px);letter-spacing:3px;line-height:1}
+h1 span{color:var(--accent)}
+.sub{font-size:11px;color:var(--muted);letter-spacing:1px;margin-top:4px}
+.sync{display:flex;align-items:center;justify-content:center;gap:7px;margin-bottom:0;font-size:11px;color:var(--muted)}
+.sdot-a{width:7px;height:7px;border-radius:50%;background:var(--green);animation:p 2s infinite}
+@keyframes p{0%,100%{opacity:1}50%{opacity:.35}}
+.stats{display:flex;gap:6px;justify-content:center;margin-bottom:0;flex-wrap:wrap}
+.stat{background:var(--surface);border:1px solid var(--border);border-radius:100px;padding:4px 12px;font-size:11px;display:flex;align-items:center;gap:5px;font-weight:700}
+.d{width:7px;height:7px;border-radius:50%}
+.dr{background:var(--accent)}.dg{background:var(--gold)}.dgr{background:var(--green)}
+.stat b{color:var(--text)}
+.toolbar{display:flex;gap:6px;justify-content:center;margin-bottom:0;flex-wrap:wrap}
+.btn{background:var(--surface2);border:1px solid var(--border);color:var(--text);font-family:"Nunito",sans-serif;font-size:11px;font-weight:700;padding:6px 11px;border-radius:8px;cursor:pointer;transition:all .15s;white-space:nowrap;display:inline-flex;align-items:center;gap:6px}
+.btn svg{width:14px;height:14px;flex-shrink:0}
+.btn:hover{background:rgba(79,168,255,0.07);border-color:rgba(79,168,255,0.25)}
+.btn:active{transform:scale(0.97)}
+.btn.eon{border-color:rgba(79,168,255,.5);color:var(--accent);background:rgba(79,168,255,.08)}
+.btn.red{border-color:rgba(240,79,79,.3);color:var(--red)}.btn.red:hover{background:rgba(240,79,79,.08)}
+.btn.shu{border-color:rgba(245,200,66,.3);color:var(--gold)}.btn.shu:hover{background:rgba(245,200,66,.07)}
+.hint{text-align:center;font-size:10px;color:var(--muted);margin-bottom:0;min-height:14px;transition:color .2s}
+.hint.e{color:var(--accent)}
+.grid{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;margin-bottom:0}
+.grid-panel{min-width:0;max-width:560px;width:100%;margin:0 auto}
+.board-wrap.edit-layout .grid-panel{max-width:none;overflow:visible;padding-right:0;margin:0}
+.pool-scroll::-webkit-scrollbar{width:8px;height:8px}
+.pool-scroll::-webkit-scrollbar-thumb{background:rgba(79,168,255,.18);border-radius:999px}
+.pool-scroll::-webkit-scrollbar-track{background:transparent}
+.pool-panel{display:none;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:10px 10px 8px;min-width:0;min-height:0}
+.board-wrap.edit-layout .pool-panel{display:flex;flex-direction:column}
+.pool-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:6px}
+.pool-title{font-size:11px;font-weight:700;color:var(--muted);letter-spacing:1px;text-transform:uppercase}
+.pool-note{font-size:10px;color:var(--muted);line-height:1.35;margin-bottom:6px}
+.pool-scroll{flex:1;min-height:0;overflow:auto;padding-right:4px}
+.pool-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;align-content:start}
+.pool-item{aspect-ratio:1;background:var(--surface2);border:1px solid var(--border);border-radius:9px;position:relative;cursor:grab;transition:border-color .15s,background .15s,transform .15s;overflow:hidden;display:flex;align-items:center;justify-content:center;padding:6px;user-select:none}
+.pool-item:hover{border-color:rgba(79,168,255,0.25);background:rgba(79,168,255,.05)}
+.pool-item.em{cursor:pointer;outline:2px dashed rgba(79,168,255,.35);outline-offset:-2px}
+.pool-dropzone{margin-top:10px;border:1px dashed rgba(79,168,255,.28);border-radius:10px;padding:11px 10px;text-align:center;font-size:10px;font-weight:700;letter-spacing:.4px;color:var(--muted);transition:border-color .15s,background .15s,color .15s}
+.pool-dropzone.drag-hover{border-color:rgba(79,168,255,.55);background:rgba(79,168,255,.08);color:var(--text)}
+.dragging{opacity:.48;transform:scale(.985)}
+.cell.drag-hover,.pool-item.drag-hover{border-color:rgba(79,168,255,.58)!important;background:rgba(79,168,255,.1)!important}
+.cell{aspect-ratio:1;background:var(--surface);border:1px solid var(--border);border-radius:9px;position:relative;cursor:pointer;transition:border-color .15s,background .15s;overflow:hidden;display:flex;align-items:center;justify-content:center;padding:5px;user-select:none}
+.cell:hover:not(.free){border-color:rgba(79,168,255,0.25);background:var(--surface2)}
+.cell.crossed{border-color:rgba(79,168,255,.45);background:rgba(79,168,255,.07)}
+.cell.free{border-color:rgba(245,200,66,.35);background:rgba(245,200,66,.06);cursor:default}
+.cell.bl{border-color:rgba(245,200,66,.65)!important;background:rgba(245,200,66,.11)!important}
+.cell.em:not(.free){cursor:pointer;outline:2px dashed rgba(79,168,255,.4);outline-offset:-2px}
+.ct{font-size:clamp(8px,1.2vw,12px);font-weight:700;text-align:center;line-height:1.2;color:var(--text);pointer-events:none;word-break:break-word;max-width:100%}
+.cell.free .ct{color:var(--gold);font-family:"Bebas Neue",sans-serif;font-size:clamp(13px,2.2vw,19px);letter-spacing:1px}
+.cross{position:absolute;inset:0;pointer-events:none;opacity:0;transition:opacity .2s}
+.cell.crossed .cross{opacity:1}
+.cross line{stroke:rgba(79,168,255,.85);stroke-width:3;stroke-linecap:round}
+.cta{position:absolute;inset:0;background:rgba(8,14,40,.97);border:none;border-radius:9px;color:var(--text);font-family:"Nunito",sans-serif;font-size:clamp(9px,1.2vw,12px);font-weight:700;text-align:center;padding:8px 5px;resize:none;outline:none;display:none;z-index:10}
+.sbox{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 18px;margin-bottom:10px}
+.sbox h3{font-size:10px;font-weight:700;color:var(--muted);letter-spacing:1px;margin-bottom:6px;text-transform:uppercase;display:flex;align-items:center;gap:6px}
+.sbox h3 svg{width:13px;height:13px}
+.lrow{display:flex;gap:6px;align-items:center}
+.linp{flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:7px;color:var(--text);font-family:"Nunito",sans-serif;font-size:11px;padding:6px 10px;outline:none}
+.linp:focus{border-color:rgba(79,168,255,.3)}
+.cbtn{background:var(--surface2);border:1px solid var(--border);color:var(--muted);font-size:10px;font-weight:700;padding:6px 10px;border-radius:7px;cursor:pointer;white-space:nowrap;transition:all .15s;display:inline-flex;align-items:center;gap:5px}
+.cbtn svg{width:12px;height:12px}
+.cbtn:hover{color:var(--text);border-color:rgba(79,168,255,.25)}
+.cbtn.ok{color:var(--green);border-color:rgba(74,222,128,.4)}
+.snote{font-size:9px;color:var(--muted);margin-top:5px;line-height:1.35}
+.footer{text-align:center;font-family:"Bebas Neue",sans-serif;font-size:13px;letter-spacing:2px;color:rgba(255,255,255,.08);margin-top:8px}
+
+.auth-lock{overflow:hidden}
+.auth-screen{position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;background:radial-gradient(circle at 50% 30%,rgba(79,168,255,.12),rgba(6,9,26,.96) 45%),rgba(6,9,26,.98)}
+.auth-card{width:min(92vw,430px);background:var(--surface);border:1px solid rgba(79,168,255,.18);border-radius:18px;padding:24px 22px;box-shadow:0 20px 80px rgba(0,0,0,.35);text-align:center}
+.auth-title{font-family:"Bebas Neue",sans-serif;font-size:42px;letter-spacing:3px;line-height:1;color:var(--text);margin-bottom:10px}
+.auth-sub{font-size:13px;color:var(--muted);line-height:1.5;margin-bottom:18px}
+.auth-input{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-family:"Nunito",sans-serif;font-size:16px;padding:13px 14px;outline:none;text-align:center;letter-spacing:1px;margin-bottom:12px}
+.auth-input:focus{border-color:rgba(79,168,255,.35)}
+.auth-btn{width:100%;justify-content:center;padding:12px 16px;font-size:14px}
+.auth-err{min-height:20px;margin-top:10px;font-size:12px;color:var(--red)}
+.auth-note{margin-top:14px;font-size:11px;color:var(--muted)}
+@media (max-width:980px){.board-wrap.edit-layout{grid-template-columns:minmax(0,1fr)}.pool-panel{order:2}.board-wrap.edit-layout .grid-panel{max-height:52vh}.pool-scroll{max-height:42vh}}
+
+</style>
+</head>
+<body class="auth-lock">
+<div class="auth-screen" id="authScreen">
+  <div class="auth-card">
+    <div class="badge">ЗАЩИТА ДОСТУПА</div>
+    <div class="auth-title">ВХОД В ПАНЕЛЬ</div>
+    <div class="auth-sub">Введите пароль, чтобы открыть панель модератора.</div>
+    <input class="auth-input" id="authInput" type="password" placeholder="Пароль" autocomplete="current-password">
+    <button class="btn auth-btn" id="authBtn" type="button">Войти</button>
+    <div class="auth-err" id="authErr"></div>
+    <div class="auth-note">Доступ защищён паролем.</div>
+  </div>
+</div>
+<div class="wrap">
+  <div class="header">
+    <div class="badge">ПАНЕЛЬ МОДЕРАТОРА</div>
+    <h1>MALOY<span>CS</span>ER BINGO</h1>
+  </div>
+  <div class="sync"><span class="sdot-a"></span><span>Синхронизация с оверлеем активна</span></div>
+  <div class="stats">
+    <div class="stat"><span class="d dr"></span>Зачёркнуто: <b id="sc">0</b></div>
+    <div class="stat"><span class="d dg"></span>Бинго: <b id="bc">0</b></div>
+    <div class="stat"><span class="d dgr"></span>Осталось: <b id="rc">24</b></div>
+  </div>
+  <div class="toolbar">
+    <button class="btn" id="ebtn" onclick="toggleEdit()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+      Редактировать текст
+    </button>
+    <button class="btn shu" onclick="doShuffle()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/><line x1="4" y1="4" x2="9" y2="9"/></svg>
+      Перемешать
+    </button>
+    <button class="btn shu" onclick="doFullShuffle()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3h5v5"/><path d="M4 20L21 3"/><path d="M21 16v5h-5"/><path d="M15 15l6 6"/><path d="M4 4l5 5"/><circle cx="8" cy="8" r="1.5"/><circle cx="16" cy="16" r="1.5"/></svg>
+      Перемешать с доп. заданиями
+    </button>
+    <button class="btn red" onclick="doReset()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.86"/></svg>
+      Сбросить зачёркивания
+    </button>
+    <button class="btn red" onclick="doFullReset()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+      Полный сброс
+    </button>
+  </div>
+  <div class="hint" id="hint">Кликни ячейку чтобы зачеркнуть - на оверлее появится уведомление.</div>
+  <div class="board-wrap" id="boardWrap">
+    <div class="grid-panel" id="gridPanel">
+      <div class="grid" id="grid"></div>
+    </div>
+    <div class="pool-panel" id="poolPanel">
+      <div class="pool-head">
+        <div class="pool-title">Доп. задания</div>
+      </div>
+      <div class="pool-scroll" id="poolScroll">
+        <div class="pool-grid" id="poolGrid"></div>
+        <div class="pool-dropzone" id="poolDropzone">Перетащи сюда, чтобы перенести блок в список доп. заданий</div>
+      </div>
+    </div>
+  </div>
+  <div class="sbox">
+    <h3>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+      Ссылка для OBS (Browser Source)
+    </h3>
+    <div class="lrow">
+      <input class="linp" id="slink" readonly value="">
+      <button class="cbtn" id="cpbtn" onclick="copyLink()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+        Копировать
+      </button>
+      <button class="btn" onclick="openOverlay()" style="font-size:10px;padding:6px 10px;gap:5px">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+        Открыть
+      </button>
+    </div>
+    <div class="snote">Добавь overlay в OBS как Browser Source. Базовое разрешение сделано под 1920x1080, дальше оверлей сам подстраивается под размер источника. Когда зачёркиваешь ячейку - на стриме появляется уведомление со звуком.</div>
+  </div>
+  <div class="footer">magicgt</div>
+</div>
+
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<script>
+const firebaseConfig={
+  apiKey:"AIzaSyDt0MdIrqIw-N5UVQmvCjHnsTM2GLg6tqY",
+  authDomain:"bingo-42f85.firebaseapp.com",
+  projectId:"bingo-42f85",
+  storageBucket:"bingo-42f85.firebasestorage.app",
+  messagingSenderId:"446319624921",
+  appId:"1:446319624921:web:971dcc5a56fe923b7e34c8",
+  measurementId:"G-W4F3VGT5EE",
+  databaseURL:"https://bingo-42f85-default-rtdb.europe-west1.firebasedatabase.app"
+};
+const ROOM=(new URL(location.href)).searchParams.get("room")||"magicgt";
+const PANEL_PASSWORD="7Gm9-KQ2p-XV4n";
+const AUTH_KEY="maloycs_bingo_auth_v1";
+let db=null, roomRef=null, remoteReady=false, applyingRemote=false;
+try{firebase.initializeApp(firebaseConfig); db=firebase.database(); roomRef=db.ref("rooms/"+ROOM); remoteReady=true;}catch(e){console.error(e);}
+
+const KEY="maloycs_bingo_v5";
+const FREE=12;
+const FREE_TEXT="ПУСТО";
+const DEF=["Полчаса рассказывает про бота","Артём клим зарейджбайтит Алексея","Начал хавать на стриме","BLACKJACK","Поцелуй на стриме","Тянет выдачу дропса","Оскорбить и дать таймаут","Чат виноват","Поправлять причёску вначале стрима","Опоздал на стрим","Плюсовой стрим","Рассказал про бота 3 раза за стрим","ПУСТО","Минусовой стрим","Зарейджбайтится на хуйню","Проебать в одном слоте 200к","Шутка про 67","СКАЗАТЬ ПРО РТП","Не выспаться перед стримом","Саня за 400","МЕГА-ОКУП","ДОДЕП","Окуп бонусбай","Не окупной бонусбай"];
+const EXTRA_POOL=["Орет", "Ноет", "Хуесосит мемодрочеров", "Упомянул кокси фокси", "Упомянул мишель", "Называет слот перспективным", "Ждёт бонуску за 15+ спинов", "Не комментирует слот", "Чует что выпадет бонуска", "Словил тишину после минуса", "Молчит больше 3-х минут стрима", "Реагирует на ник зрителя", "Посмеяться с смешной каппы", "Осудить каппу", "Вспоминает прошлый стрим", "Упоминает о том что можно заработать на нарезках", "Случайно палит лишнее", "Пьёт что-то на стриме", "Долго выбирает слот", "Уходит включить настроить свет", "Смеётся сам с себя", "Вспоминает старый занос", "Рассказывает историю из жизни", "Просит чат выбрать бонуску", "Просит чат выбрать слот", "Резко меняет настроение", "Спорит с математикой слота", "Говорит про подкрутку", "Называет стрим странным", "Подмечает что сегодня чат тихий", "Говорит про своих 400 украинских друзей", "Объявляет камбэк", "Поймал мини-тильт из-за пустых спинов", "Вернулся в тот же слот через минуту", "Начал считать сколько нужно до камбэка", "Сказал что почти максималка", "Забайтится на байт", "Получить минотавра в слоте", "Получить больше 12 спинов", "Вспоминает как раньше этот слот давал", "Начал оправдывать ещё один бай", "Говорит что это контентный слив", "Делает вид что не заметил донат", "Цепляется за одно сообщение в чате", "Просит нарезать смешной момент", "Тянет драматическую паузу", "Резко орёт после хорошего заноса", "Хлопает по столу", "Закрывает лицо руками", "Называет себя провидцем", "Обещает стоп после следующего", "Меняет решение через 10 секунд", "Под конец резко оживляется", "Рассмеялся с абсолютно пустого спина", "Сказал что это был разогрев", "Сказал что сейчас надо дожать", "Вернулся в тот-же слот откуда выходил", "Поймал тильт на ровном месте", "Назвал бонуску проверочным", "Попросил чат не советовать хуйню", "Вытаращить смешную рожу"];
+
+function defaultPool(){return [...EXTRA_POOL];}
+function legacyPool(){return DEF.filter((_,i)=>i!==FREE);}
+function normalizePool(pool){
+  const list=Array.isArray(pool)?pool.map(v=>String(v??"").trim()).filter(Boolean):[];
+  if(!list.length)return defaultPool();
+  const legacy=legacyPool();
+  if(list.length===legacy.length&&list.every((value,index)=>value===legacy[index]))return defaultPool();
+  return list;
+}
+function normalizeState(raw){
+  const texts=raw&&Array.isArray(raw.texts)&&raw.texts.length===25?[...raw.texts]:[...DEF];
+  texts[FREE]=FREE_TEXT;
+  const crossed=raw&&Array.isArray(raw.crossed)&&raw.crossed.length===25?[...raw.crossed]:new Array(25).fill(false);
+  crossed[FREE]=false;
+  const pool=normalizePool(raw&&Array.isArray(raw.pool)?raw.pool:null);
+  return{texts,crossed,pool};
+}
+
+let state=normalizeState(load());
+let editMode=false;
+let doneBingos=new Set();
+let draggedRef=null;
+
+function syncLocal(payload){
+  localStorage.setItem(KEY,JSON.stringify(payload));
+  try{localStorage.setItem(KEY+"_ping",String(payload.ts));}catch(e){}
+  try{new BroadcastChannel("maloycs_bingo").postMessage({type:"update",...payload});}catch(e){}
+}
+function publishState(lastIdx,lastText,newBingo,lastAction=null){
+  state.texts[FREE]=FREE_TEXT;
+  state.crossed[FREE]=false;
+  const payload={texts:state.texts,crossed:state.crossed,pool:state.pool,lastIdx,lastText,newBingo,lastAction,ts:Date.now(),room:ROOM};
+  syncLocal(payload);
+  if(remoteReady&&roomRef){roomRef.set(payload).catch(err=>console.error("Firebase write failed",err));}
+}
+function bindRemote(){
+  if(!(remoteReady&&roomRef))return;
+  roomRef.on("value",snap=>{
+    const data=snap.val();
+    if(!data||!data.texts||data.texts.length!==25)return;
+    const incoming=normalizeState({...data,pool:Array.isArray(data.pool)?data.pool:state.pool});
+    const changed=JSON.stringify(incoming)!==JSON.stringify({texts:state.texts,crossed:state.crossed,pool:state.pool});
+    if(!changed)return;
+    applyingRemote=true;
+    state=incoming;
+    syncLocal({...data,pool:incoming.pool});
+    render();
+    applyingRemote=false;
+  });
+}
+function ensureRemoteSeed(){
+  if(!(remoteReady&&roomRef))return;
+  roomRef.get().then(snap=>{
+    const data=snap.val();
+    if(data&&data.texts&&data.texts.length===25){
+      state=normalizeState({...data,pool:Array.isArray(data.pool)?data.pool:state.pool});
+      render();
+    }else publishState(null,null,false);
+  }).catch(err=>console.error("Firebase init failed",err));
+}
+
+function load(){
+  try{
+    const s=JSON.parse(localStorage.getItem(KEY));
+    if(s&&s.texts&&s.texts.length===25)return s;
+  }catch(e){}
+  return{texts:[...DEF],crossed:new Array(25).fill(false),pool:defaultPool()};
+}
+function save(lastIdx,lastText,newBingo,lastAction=null){
+  if(applyingRemote)return;
+  publishState(lastIdx,lastText,newBingo,lastAction);
+}
+function LINES(){
+  const L=[];
+  for(let r=0;r<5;r++)L.push([r*5,r*5+1,r*5+2,r*5+3,r*5+4]);
+  for(let c=0;c<5;c++)L.push([c,c+5,c+10,c+15,c+20]);
+  L.push([0,6,12,18,24]);L.push([4,8,12,16,20]);
+  return L;
+}
+function ic(i){return i===FREE||state.crossed[i];}
+function checkBingo(){
+  let nb=false;
+  LINES().forEach(line=>{
+    const k=line.join(",");
+    if(line.every(ic)&&!doneBingos.has(k)){
+      doneBingos.add(k);nb=true;
+      line.forEach(i=>{const c=document.querySelector('.cell[data-index="'+i+'"]');if(c)c.classList.add("bl");});
+    }
+  });
+  return nb;
+}
+function updateStats(){
+  const cr=state.crossed.filter((_,i)=>i!==FREE&&state.crossed[i]).length;
+  document.getElementById("sc").textContent=cr;
+  document.getElementById("bc").textContent=doneBingos.size;
+  document.getElementById("rc").textContent=24-cr;
+}
+function getRefText(ref){
+  if(!ref)return"";
+  return ref.source==="grid"?state.texts[ref.index]:state.pool[ref.index];
+}
+function setRefText(ref,value){
+  if(!ref)return;
+  if(ref.source==="grid"&&ref.index===FREE){
+    state.texts[FREE]=FREE_TEXT;
+    return;
+  }
+  const next=String(value??"").trim();
+  if(ref.source==="grid")state.texts[ref.index]=next;
+  else state.pool[ref.index]=next;
+}
+function clearGridCell(index){
+  if(index===FREE)return;
+  state.texts[index]="";
+  state.crossed[index]=false;
+}
+function removePoolIndex(index){
+  state.pool.splice(index,1);
+}
+function moveToPoolEnd(from){
+  const text=getRefText(from).trim();
+  if(!text)return false;
+  if(from.source==="grid"){
+    state.pool.push(text);
+    clearGridCell(from.index);
+    return true;
+  }
+  if(from.source==="pool"){
+    if(from.index===state.pool.length-1)return false;
+    const [moved]=state.pool.splice(from.index,1);
+    state.pool.push(moved);
+    return true;
+  }
+  return false;
+}
+function applyDrop(from,to){
+  if(!from||!to||sameRef(from,to))return false;
+  const fromText=getRefText(from).trim();
+  if(!fromText)return false;
+  const toText=getRefText(to).trim();
+
+  if(from.source==="pool"&&to.source==="grid"&&!toText){
+    state.texts[to.index]=fromText;
+    removePoolIndex(from.index);
+    return true;
+  }
+
+  setRefText(to,fromText);
+  if(from.source==="grid"){
+    if(toText){
+      state.texts[from.index]=toText;
+    }else{
+      clearGridCell(from.index);
+    }
+  }else{
+    state.pool[from.index]=toText;
+  }
+
+  if(to.source==="grid"&&!fromText)state.crossed[to.index]=false;
+  if(from.source==="pool"&&!toText){
+    state.pool=state.pool.filter((value,index)=>index!==from.index||String(value??"").trim());
+  }
+  return true;
+}
+function sameRef(a,b){return !!a&&!!b&&a.source===b.source&&a.index===b.index;}
+function clearDragState(){
+  document.querySelectorAll(".drag-hover,.dragging").forEach(el=>el.classList.remove("drag-hover","dragging"));
+}
+function parseDragData(e){
+  try{
+    const raw=e.dataTransfer.getData("text/plain");
+    if(raw)return JSON.parse(raw);
+  }catch(err){}
+  return draggedRef;
+}
+function openEdit(ref,box,txt,ta){
+  if(editMode)box.classList.add("em");
+  ta.value=getRefText(ref);
+  ta.style.display="block";
+  txt.style.display="none";
+  ta.focus();
+  ta.select();
+}
+function commitEdit(ref,box,txt,ta){
+  const current=getRefText(ref);
+  const value=ta.value.trim()||current;
+  setRefText(ref,value);
+  txt.textContent=value;
+  ta.style.display="none";
+  txt.style.display="";
+  if(editMode)box.classList.add("em");
+  save(null,null,false);
+}
+function makeDraggable(el,ref){
+  if(ref.source==="grid"&&ref.index===FREE)return;
+  el.dataset.source=ref.source;
+  el.dataset.index=ref.index;
+  el.draggable=!!editMode;
+  el.addEventListener("dragstart",e=>{
+    if(!editMode||!getRefText(ref).trim())return e.preventDefault();
+    draggedRef=ref;
+    clearDragState();
+    el.classList.add("dragging");
+    e.dataTransfer.effectAllowed="move";
+    e.dataTransfer.setData("text/plain",JSON.stringify(ref));
+  });
+  el.addEventListener("dragend",()=>{draggedRef=null;clearDragState();});
+  el.addEventListener("dragover",e=>{
+    if(!editMode)return;
+    if(ref.source==="grid"&&ref.index===FREE)return;
+    const incoming=parseDragData(e);
+    if(!incoming||sameRef(incoming,ref)||!getRefText(incoming).trim())return;
+    e.preventDefault();
+    el.classList.add("drag-hover");
+  });
+  el.addEventListener("dragleave",()=>el.classList.remove("drag-hover"));
+  el.addEventListener("drop",e=>{
+    if(!editMode)return;
+    if(ref.source==="grid"&&ref.index===FREE)return;
+    e.preventDefault();
+    el.classList.remove("drag-hover");
+    const from=parseDragData(e);
+    if(!applyDrop(from,ref))return;
+    save(null,null,false);
+    render();
+  });
+}
+function renderPool(){
+  const poolGrid=document.getElementById("poolGrid");
+  const dropzone=document.getElementById("poolDropzone");
+  poolGrid.innerHTML="";
+  state.pool.forEach((text,index)=>{
+    const ref={source:"pool",index};
+    const item=document.createElement("div");
+    item.className="pool-item"+(editMode?" em":"");
+    const txt=document.createElement("div");
+    txt.className="ct";
+    txt.textContent=text;
+    const ta=document.createElement("textarea");
+    ta.className="cta";
+    ta.maxLength=60;
+    ta.value=text;
+    item.appendChild(txt);
+    item.appendChild(ta);
+    makeDraggable(item,ref);
+    item.addEventListener("click",()=>{
+      if(!editMode)return;
+      openEdit(ref,item,txt,ta);
+    });
+    ta.addEventListener("blur",()=>commitEdit(ref,item,txt,ta));
+    ta.addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();ta.blur();}});
+    poolGrid.appendChild(item);
+  });
+  dropzone.classList.remove("drag-hover");
+  dropzone.ondragover=e=>{
+    if(!editMode)return;
+    const incoming=parseDragData(e);
+    if(!incoming||!getRefText(incoming).trim())return;
+    e.preventDefault();
+    dropzone.classList.add("drag-hover");
+  };
+  dropzone.ondragleave=()=>dropzone.classList.remove("drag-hover");
+  dropzone.ondrop=e=>{
+    if(!editMode)return;
+    e.preventDefault();
+    dropzone.classList.remove("drag-hover");
+    const from=parseDragData(e);
+    if(!moveToPoolEnd(from))return;
+    save(null,null,false);
+    render();
+  };
+}
+function render(){
+  const grid=document.getElementById("grid");
+  grid.innerHTML="";
+  doneBingos=new Set();
+  for(let i=0;i<25;i++){
+    const isFree=i===FREE;
+    const ref={source:"grid",index:i};
+    const cell=document.createElement("div");
+    cell.className="cell"+(isFree?" free":"")+(state.crossed[i]&&!isFree?" crossed":"")+(editMode&&!isFree?" em":"");
+    cell.dataset.index=i;
+    const txt=document.createElement("div");
+    txt.className="ct";
+    txt.textContent=isFree?FREE_TEXT:state.texts[i];
+    const svg=document.createElementNS("http://www.w3.org/2000/svg","svg");
+    svg.setAttribute("class","cross");
+    svg.setAttribute("viewBox","0 0 100 100");
+    svg.setAttribute("preserveAspectRatio","none");
+    svg.innerHTML='<line x1="8" y1="8" x2="92" y2="92"/><line x1="92" y1="8" x2="8" y2="92"/>';
+    const ta=document.createElement("textarea");
+    ta.className="cta";
+    ta.maxLength=60;
+    ta.value=isFree?FREE_TEXT:state.texts[i];
+    cell.appendChild(txt);
+    cell.appendChild(svg);
+    cell.appendChild(ta);
+    grid.appendChild(cell);
+
+    if(!isFree){
+      makeDraggable(cell,ref);
+      cell.addEventListener("click",()=>{
+        if(editMode){openEdit(ref,cell,txt,ta);return;}
+        state.crossed[i]=!state.crossed[i];
+        cell.classList.toggle("crossed",state.crossed[i]);
+        const nb=state.crossed[i]?checkBingo():false;
+        save(i,state.texts[i],nb,state.crossed[i]?"cross":"uncross");
+        updateStats();
+      });
+    }
+    ta.addEventListener("blur",()=>commitEdit(ref,cell,txt,ta));
+    ta.addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();ta.blur();}});
+  }
+  LINES().forEach(line=>{
+    const k=line.join(",");
+    if(line.every(ic)){
+      doneBingos.add(k);
+      line.forEach(i=>{
+        const c=document.querySelector('.cell[data-index="'+i+'"]');
+        if(c)c.classList.add("bl");
+      });
+    }
+  });
+  renderPool();
+  updateStats();
+  setLink();
+}
+function toggleEdit(){
+  editMode=!editMode;
+  const btn=document.getElementById("ebtn");
+  const hint=document.getElementById("hint");
+  const boardWrap=document.getElementById("boardWrap");
+  boardWrap.classList.toggle("edit-layout",editMode);
+  const doneIcon='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;flex-shrink:0"><polyline points="20 6 9 17 4 12"/></svg>';
+  const penIcon='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;flex-shrink:0"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>';
+  if(editMode){
+    btn.innerHTML=doneIcon+" Выйти из редактирования";
+    btn.classList.add("eon");
+    hint.textContent="Кликни по блоку для текста. Скролл есть только у списка доп. заданий, а блоки можно перетаскивать между ним и сеткой.";
+    hint.classList.add("e");
+  }else{
+    btn.innerHTML=penIcon+" Редактировать текст";
+    btn.classList.remove("eon");
+    hint.textContent="Кликни ячейку чтобы зачеркнуть - на оверлее появится уведомление.";
+    hint.classList.remove("e");
+  }
+  render();
+}
+function doShuffle(){
+  if(!confirm("Перемешать ячейки? Зачёркивания сбросятся."))return;
+  const pool=state.texts.filter((_,i)=>i!==FREE);
+  for(let i=pool.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[pool[i],pool[j]]=[pool[j],pool[i]];}
+  let pi=0;
+  for(let i=0;i<25;i++){if(i!==FREE)state.texts[i]=pool[pi++];}
+  state.crossed=new Array(25).fill(false);
+  doneBingos=new Set();
+  save(null,null,false);
+  render();
+}
+function doFullShuffle(){
+  if(!confirm("Перемешать таблицу вместе с доп. заданиями? Текущая таблица и пул будут перемешаны общим списком, зачёркивания сбросятся."))return;
+  const mixed=[...state.texts.filter((text,i)=>i!==FREE&&String(text??"").trim()),...state.pool.filter(text=>String(text??"").trim())];
+  for(let i=mixed.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[mixed[i],mixed[j]]=[mixed[j],mixed[i]];}
+  let pi=0;
+  for(let i=0;i<25;i++){
+    if(i===FREE)continue;
+    state.texts[i]=mixed[pi++]||"";
+  }
+  state.pool=mixed.slice(pi);
+  state.crossed=new Array(25).fill(false);
+  doneBingos=new Set();
+  save(null,null,false);
+  render();
+}
+function doReset(){
+  if(!confirm("Сбросить все зачёркивания?"))return;
+  state.crossed=new Array(25).fill(false);
+  doneBingos=new Set();
+  save(null,null,false);
+  render();
+}
+function doFullReset(){
+  if(!confirm("Полный сброс? Таблица очистится, а все активные блоки уйдут в доп. задания."))return;
+  const activeBlocks=state.texts.filter((text,i)=>i!==FREE&&String(text??"").trim());
+  state.pool=[...state.pool,...activeBlocks];
+  state.texts=state.texts.map((text,i)=>i===FREE?FREE_TEXT:"");
+  state.crossed=new Array(25).fill(false);
+  doneBingos=new Set();
+  save(null,null,false);
+  render();
+}
+function getOverlayUrl(){
+  const url=new URL(location.href);
+  const parts=url.pathname.split("/");
+  const file=parts.pop()||"";
+  parts.push(file.replace(/^moderator(.*)\.html$/i,"overlay$1.html"));
+  url.pathname=parts.join("/");
+  url.searchParams.set("room",ROOM);
+  return url.toString();
+}
+function setLink(){
+  const v=getOverlayUrl();
+  const el=document.getElementById("slink");
+  el.value=v;
+  el.title=v;
+}
+function copyLink(){
+  document.getElementById("slink").select();
+  document.execCommand("copy");
+  const b=document.getElementById("cpbtn");
+  b.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px"><polyline points="20 6 9 17 4 12"/></svg> Скопировано!';
+  b.classList.add("ok");
+  setTimeout(()=>{b.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> Копировать';b.classList.remove("ok");},2000);
+}
+function openOverlay(){window.open(getOverlayUrl(),"_blank");}
+try{
+  const ch=new BroadcastChannel("maloycs_bingo");
+  ch.onmessage=e=>{
+    if(e.data.type==="update"&&e.data.texts&&!applyingRemote){
+      state=normalizeState(e.data);
+      render();
+    }
+  };
+}catch(e){}
+function unlockPanel(){
+  document.body.classList.remove("auth-lock");
+  const s=document.getElementById("authScreen");
+  if(s)s.style.display="none";
+}
+function initAuth(){
+  const cached=sessionStorage.getItem(AUTH_KEY);
+  if(cached===PANEL_PASSWORD){unlockPanel();return;}
+  const input=document.getElementById("authInput");
+  const btn=document.getElementById("authBtn");
+  const err=document.getElementById("authErr");
+  function submit(){
+    if(input.value===PANEL_PASSWORD){
+      sessionStorage.setItem(AUTH_KEY,PANEL_PASSWORD);
+      err.textContent="";
+      unlockPanel();
+      input.value="";
+    }else{
+      err.textContent="Неверный пароль";
+      input.select();
+    }
+  }
+  btn.addEventListener("click",submit);
+  input.addEventListener("keydown",e=>{if(e.key==="Enter")submit();});
+  setTimeout(()=>input.focus(),60);
+}
+render();
+bindRemote();
+ensureRemoteSeed();
+initAuth();
+</script>
+
+</body>
+</html>
